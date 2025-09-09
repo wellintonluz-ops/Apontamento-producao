@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apontamento de Produção Avançado</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Adição da biblioteca Chart.js para os dashboards -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
@@ -234,7 +233,7 @@
                     const isStarted = subetapa.inicio !== null;
                     const isFinished = subetapa.fim !== null;
                     const isPaused = subetapa.emPausa;
-                    const canStart = !isStarted && prevSubetapaConcluida && prevEtapaConcluida;
+                    const canStart = !isStarted;
                     const canInteract = !ordemProducaoAtual.concluida;
 
                     subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished || !canInteract ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || !canInteract ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused || !canInteract ? 'disabled' : ''}>Concluir</button></div>`;
@@ -289,9 +288,7 @@
             const { index, subIndex } = parent.dataset;
             const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
             const etapa = ordemProducaoAtual.etapas[index];
-            if (sub.emPausa) {
-                return showAviso("Conclua a pausa antes de finalizar.");
-            }
+            if (sub.emPausa) return showAviso("Conclua a pausa antes de finalizar.");
             const now = Timestamp.now();
             sub.fim = now;
             if (sub.inicio && typeof sub.inicio.toMillis === 'function') {
@@ -319,9 +316,7 @@
         }
         
         async function handleFinalizeMain(isAutomatic = false) {
-            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) {
-                return;
-            }
+            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) return;
             ordemProducaoAtual.dataFim = Timestamp.now();
             ordemProducaoAtual.concluida = true;
             await updateOrderInFirestore();
@@ -751,11 +746,6 @@
             });
         }
         
-        function main() {
-            bindEventListeners();
-            initializeFirebase();
-        }
-
         main();
     </script>
 </body>
