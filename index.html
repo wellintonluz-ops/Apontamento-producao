@@ -65,6 +65,9 @@
                 <div id="etapasApontamento" class="space-y-6"></div>
             </div>
             <div id="listasDeOrdens" class="space-y-6">
+                <div class="flex justify-end mb-4">
+                    <button id="exportarBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Exportar Histórico (CSV)</button>
+                </div>
                 <div><h3 class="text-xl font-semibold text-gray-700">Ordens Em Andamento</h3><ul id="ordensEmAndamentoUl" class="list-none space-y-2"></ul></div>
                 <div><h3 class="text-xl font-semibold text-gray-700">Ordens Concluídas</h3><ul id="ordensConcluidasUl" class="list-none space-y-2"></ul></div>
             </div>
@@ -113,6 +116,7 @@
             avisoModal: document.getElementById('avisoModal'),
             avisoText: document.getElementById('avisoText'),
             fecharAvisoBtn: document.getElementById('fecharAvisoBtn'),
+            exportarBtn: document.getElementById('exportarBtn'),
         };
 
         let db, auth, userId;
@@ -139,12 +143,8 @@
         }
 
         function formatarTempo(ms) {
-            if (ms === null || isNaN(ms) || ms < 0) {
-                return '00:00:00';
-            }
-            const s = Math.floor(ms / 1000);
-            const m = Math.floor(s / 60);
-            const h = Math.floor(m / 60);
+            if (ms === null || isNaN(ms) || ms < 0) return '00:00:00';
+            const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60);
             return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
         }
 
@@ -159,12 +159,8 @@
         }
         
         function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(function(tab) {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-button').forEach(function(btn) {
-                btn.classList.remove('active');
-            });
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             document.getElementById(`${tabId}Btn`).classList.add('active');
         }
@@ -174,12 +170,8 @@
             etapaDiv.className = 'etapa p-4 border rounded-lg bg-gray-50 space-y-2';
             etapaDiv.innerHTML = `<div><label class="block text-sm font-medium text-gray-700">Nome da Etapa</label><input type="text" class="etapa-nome mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Montagem" value="${nome}"></div><div class="subetapas-container pl-4 space-y-2"></div><div class="flex space-x-2"><button type="button" class="add-subetapa-btn flex-1 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Adicionar Sub-etapa</button><button type="button" class="remove-etapa-btn flex-1 bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover Etapa</button></div>`;
             elements.etapasContainer.appendChild(etapaDiv);
-            etapaDiv.querySelector('.add-subetapa-btn').addEventListener('click', function() {
-                createSubetapaField(etapaDiv.querySelector('.subetapas-container'));
-            });
-            etapaDiv.querySelector('.remove-etapa-btn').addEventListener('click', function() {
-                etapaDiv.remove();
-            });
+            etapaDiv.querySelector('.add-subetapa-btn').addEventListener('click', () => createSubetapaField(etapaDiv.querySelector('.subetapas-container')));
+            etapaDiv.querySelector('.remove-etapa-btn').addEventListener('click', () => etapaDiv.remove());
         }
 
         function createSubetapaField(container, nome = '') {
@@ -187,47 +179,46 @@
             subetapaDiv.className = 'subetapa flex items-center space-x-2';
             subetapaDiv.innerHTML = `<input type="text" class="subetapa-nome flex-1 block w-full rounded-md border-gray-300 shadow-sm p-2 text-sm" placeholder="Nome da Sub-etapa" value="${nome}"><button type="button" class="remove-subetapa-btn bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover</button>`;
             container.appendChild(subetapaDiv);
-            subetapaDiv.querySelector('.remove-subetapa-btn').addEventListener('click', function() {
-                subetapaDiv.remove();
-            });
+            subetapaDiv.querySelector('.remove-subetapa-btn').addEventListener('click', () => subetapaDiv.remove());
         }
         
         function renderizarOrdem() {
             elements.etapasApontamentoDiv.innerHTML = '';
-            if (!ordemProducaoAtual || !ordemProducaoAtual.etapas) {
-                return;
-            }
+            if (!ordemProducaoAtual || !ordemProducaoAtual.etapas) return;
             elements.ordemNumeroDisplay.textContent = ordemProducaoAtual.numero;
             let prevEtapaConcluida = true;
-            ordemProducaoAtual.etapas.forEach(function(etapa, index) {
+            ordemProducaoAtual.etapas.forEach((etapa, index) => {
                 const etapaDiv = document.createElement('div');
                 etapaDiv.className = `etapa-card p-4 border rounded-lg bg-gray-50 space-y-3 ${etapa.concluida ? 'etapa-concluida' : ''}`;
                 etapaDiv.dataset.index = index;
                 etapaDiv.innerHTML = `<div class="flex justify-between items-center"><h4 class="text-lg font-bold text-gray-800">${etapa.nome}</h4><div class="text-sm text-right"><p class="responsavel-etapa-display text-gray-600">Responsável: ${etapa.responsavel || '--'}</p><p class="text-gray-600">Tempo Líquido: <span class="font-semibold">${formatarTempo(etapa.tempoLiquido)}</span></p></div></div><div class="subetapas-apontamento-container pl-4 space-y-2 border-l-2 border-gray-200"></div>`;
                 const subetapasContainer = etapaDiv.querySelector('.subetapas-apontamento-container');
                 let prevSubetapaConcluida = true;
-                etapa.subetapas.forEach(function(subetapa, subIndex) {
+                etapa.subetapas.forEach((subetapa, subIndex) => {
                     const subetapaDiv = document.createElement('div');
                     subetapaDiv.className = `subetapa-card p-3 bg-white rounded-md shadow-sm border ${subetapa.fim ? 'etapa-concluida' : ''}`;
                     subetapaDiv.dataset.index = index; 
                     subetapaDiv.dataset.subIndex = subIndex;
-                    const isStarted = subetapa.inicio !== null, isFinished = subetapa.fim !== null, isPaused = subetapa.emPausa, canStart = !isStarted && prevSubetapaConcluida && prevEtapaConcluida;
-                    subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused ? 'disabled' : ''}>Concluir</button></div>`;
+                    const isStarted = subetapa.inicio !== null;
+                    const isFinished = subetapa.fim !== null;
+                    const isPaused = subetapa.emPausa;
+                    const canStart = !isStarted && prevSubetapaConcluida && prevEtapaConcluida;
+                    subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused ? 'disabled' : ''}>Concluir</button></div>`;
                     subetapasContainer.appendChild(subetapaDiv);
                     prevSubetapaConcluida = isFinished;
                 });
                 elements.etapasApontamentoDiv.appendChild(etapaDiv);
                 prevEtapaConcluida = etapa.concluida;
             });
-            elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(function(btn) { btn.addEventListener('click', handleStart); });
-            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').forEach(function(btn) { btn.addEventListener('click', handlePause); });
-            elements.etapasApontamentoDiv.querySelectorAll('.concluir-btn').forEach(function(btn) { btn.addEventListener('click', handleConclude); });
+            elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(btn => btn.addEventListener('click', handleStart));
+            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').forEach(btn => btn.addEventListener('click', handlePause));
+            elements.etapasApontamentoDiv.querySelectorAll('.concluir-btn').forEach(btn => btn.addEventListener('click', handleConclude));
         }
         
         async function updateOrderInFirestore() {
             if (!currentOrderDocId) return;
             const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
-            await setDoc(docRef, ordemProducaoAtual).catch(function(e) { console.error(e); showAviso("Erro ao salvar o progresso da ordem."); });
+            await setDoc(docRef, ordemProducaoAtual).catch(e => { console.error(e); showAviso("Erro ao salvar o progresso da ordem."); });
         }
 
         function handleStart(event) {
@@ -264,21 +255,22 @@
             const { index, subIndex } = parent.dataset;
             const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
             const etapa = ordemProducaoAtual.etapas[index];
-            if (sub.emPausa) {
-                return showAviso("Conclua a pausa antes de finalizar.");
-            }
+            if (sub.emPausa) return showAviso("Conclua a pausa antes de finalizar.");
             const now = Timestamp.now();
             sub.fim = now;
             if (sub.inicio && typeof sub.inicio.toMillis === 'function') {
                  sub.tempoLiquido = now.toMillis() - sub.inicio.toMillis() - sub.tempoTotalPausas;
+                 const tempoEmHoras = sub.tempoLiquido / (1000 * 60 * 60);
+                 sub.produtividade = tempoEmHoras > 0 ? ordemProducaoAtual.quantidade / tempoEmHoras : 0;
             } else {
                 sub.tempoLiquido = 0; 
+                sub.produtividade = 0;
             }
             showAviso(`Sub-etapa "${sub.nome}" concluída!`);
             if (checkAllSubetapasConcluded(etapa)) {
                 etapa.fim = now;
                 etapa.concluida = true;
-                etapa.tempoLiquido = etapa.subetapas.reduce(function(acc, s) { return acc + (s.tempoLiquido || 0); }, 0);
+                etapa.tempoLiquido = etapa.subetapas.reduce((acc, s) => acc + (s.tempoLiquido || 0), 0);
                 showAviso(`Etapa "${etapa.nome}" concluída!`);
                 if (checkAllEtapasConcluded(ordemProducaoAtual)) {
                     elements.finalizarOrdemBtn.disabled = false;
@@ -291,9 +283,7 @@
         }
         
         async function handleFinalizeMain(isAutomatic = false) {
-            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) {
-                return;
-            }
+            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) return;
             ordemProducaoAtual.dataFim = Timestamp.now();
             ordemProducaoAtual.concluida = true;
             await updateOrderInFirestore();
@@ -315,36 +305,91 @@
             currentEditingProductId = id;
             elements.codigoProdutoCadastroInput.value = data.codigo;
             elements.etapasContainer.innerHTML = '';
-            data.etapas.forEach(function(etapa) {
+            data.etapas.forEach(etapa => {
                 const etapaDiv = createEtapaField(etapa.nome);
                 const subContainer = etapaDiv.querySelector('.subetapas-container');
-                etapa.subetapas.forEach(function(sub) {
-                    createSubetapaField(subContainer, sub.nome);
-                });
+                etapa.subetapas.forEach(sub => createSubetapaField(subContainer, sub.nome));
             });
             elements.salvarProdutoBtn.textContent = 'Atualizar Produto';
             switchTab('cadastroTab');
         }
 
-        function setupFirebaseListeners() {
-            if (!userId) {
-                return;
+        async function exportarParaCSV() {
+            showAviso("A gerar o ficheiro CSV...");
+            try {
+                const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
+                const snapshot = await getDocs(query(ordensRef, orderBy("numero", "desc")));
+                
+                if (snapshot.empty) {
+                    showAviso("Não há dados para exportar.");
+                    return;
+                }
+
+                let csvContent = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Inicio,Fim,Tempo Liquido,Produtividade (pçs/h)\n";
+                
+                snapshot.forEach(doc => {
+                    const ordem = doc.data();
+                    const status = ordem.concluida ? "Concluída" : "Em Andamento";
+
+                    if (ordem.etapas && ordem.etapas.length > 0) {
+                        ordem.etapas.forEach(etapa => {
+                            if (etapa.subetapas && etapa.subetapas.length > 0) {
+                                etapa.subetapas.forEach(sub => {
+                                    const inicio = sub.inicio ? sub.inicio.toDate().toLocaleString('pt-BR') : 'N/A';
+                                    const fim = sub.fim ? sub.fim.toDate().toLocaleString('pt-BR') : 'N/A';
+                                    const tempo = formatarTempo(sub.tempoLiquido);
+                                    const prod = sub.produtividade ? sub.produtividade.toFixed(2) : '0.00';
+                                    
+                                    const row = [
+                                        `"${ordem.numero}"`,
+                                        `"${ordem.produto}"`,
+                                        ordem.quantidade,
+                                        `"${status}"`,
+                                        `"${etapa.nome}"`,
+                                        `"${sub.nome}"`,
+                                        `"${sub.responsavel || ''}"`,
+                                        `"${inicio}"`,
+                                        `"${fim}"`,
+                                        `"${tempo}"`,
+                                        `"${prod}"`
+                                    ].join(",");
+                                    csvContent += row + "\n";
+                                });
+                            }
+                        });
+                    }
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `historico_producao_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showAviso("Exportação concluída!");
+            } catch (e) {
+                console.error("Erro ao exportar CSV:", e);
+                showAviso("Ocorreu um erro ao exportar os dados.");
             }
+        }
+
+        function setupFirebaseListeners() {
+            if (!userId) return;
             
             const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
-            onSnapshot(query(produtosRef, orderBy("codigo")), function(snapshot) {
+            onSnapshot(query(produtosRef, orderBy("codigo")), (snapshot) => {
                 elements.listaProdutosCadastradosUl.innerHTML = '';
                 elements.produtoApontamentoSelect.innerHTML = '<option value="">Selecione um produto...</option>';
-                snapshot.forEach(function(doc) {
+                snapshot.forEach(doc => {
                     const data = doc.data();
                     const li = document.createElement('li');
                     li.className = 'product-item';
                     li.textContent = data.codigo;
-                    li.addEventListener('click', function() {
-                        fillFormForEditing(doc.id, data);
-                    });
+                    li.addEventListener('click', () => fillFormForEditing(doc.id, data));
                     elements.listaProdutosCadastradosUl.appendChild(li);
-
                     const option = document.createElement('option');
                     option.value = doc.id;
                     option.textContent = data.codigo;
@@ -353,19 +398,14 @@
             });
             
             const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
-            onSnapshot(query(ordensRef, orderBy("numero", "desc")), function(snapshot) {
+            onSnapshot(query(ordensRef, orderBy("numero", "desc")), (snapshot) => {
                 elements.ordensEmAndamentoUl.innerHTML = '';
                 elements.ordensConcluidasUl.innerHTML = '';
-                snapshot.forEach(function(doc) {
+                snapshot.forEach(doc => {
                     const data = doc.data();
                     const li = document.createElement('li');
-                    li.className = 'p-4 bg-gray-100 rounded-lg border border-gray-200';
-                    if (!data.concluida) {
-                        li.classList.add('cursor-pointer', 'hover:bg-gray-200');
-                        li.addEventListener('click', function() {
-                            carregarOrdemParaApontamento(doc.id, data);
-                        });
-                    }
+                    li.className = 'p-4 bg-gray-100 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200';
+                    li.addEventListener('click', () => carregarOrdemParaApontamento(doc.id, data));
                     li.innerHTML = `
                         <p class="font-semibold text-gray-800">Ordem #${data.numero}</p>
                         <p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p>
@@ -389,14 +429,14 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
-                onAuthStateChanged(auth, function(user) {
+                onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
                         elements.userIdDisplay.textContent = userId;
                         setupFirebaseListeners();
                     } else {
                         if (initialAuthToken) {
-                            signInWithCustomToken(auth, initialAuthToken).catch(function(err) {
+                            signInWithCustomToken(auth, initialAuthToken).catch(err => {
                                 console.error("Falha no login com token, tentando anônimo:", err);
                                 signInAnonymously(auth);
                             });
@@ -412,44 +452,44 @@
         }
         
         function bindEventListeners() {
-            elements.cadastroTabBtn.addEventListener('click', function() { switchTab('cadastroTab'); });
-            elements.apontamentoTabBtn.addEventListener('click', function() { switchTab('apontamentoTab'); });
-            elements.historicoTabBtn.addEventListener('click', function() { switchTab('historicoTab'); });
+            elements.cadastroTabBtn.addEventListener('click', () => switchTab('cadastroTab'));
+            elements.apontamentoTabBtn.addEventListener('click', () => switchTab('apontamentoTab'));
+            elements.historicoTabBtn.addEventListener('click', () => switchTab('historicoTab'));
             elements.addEtapaBtn.addEventListener('click', createEtapaField);
-            elements.fecharAvisoBtn.addEventListener('click', function() { elements.avisoModal.classList.add('hidden'); });
+            elements.fecharAvisoBtn.addEventListener('click', () => elements.avisoModal.classList.add('hidden'));
+            elements.exportarBtn.addEventListener('click', exportarParaCSV);
             
-            elements.voltarBtn.addEventListener('click', function() {
+            elements.voltarBtn.addEventListener('click', () => {
                 elements.ordemDetalhesDiv.classList.add('hidden');
                 elements.listasDeOrdensDiv.classList.remove('hidden');
                 currentOrderDocId = null;
                 ordemProducaoAtual = {};
             });
             
-            elements.finalizarOrdemBtn.addEventListener('click', function() { handleFinalizeMain(false); });
-            elements.cancelarJustificativaBtn.addEventListener('click', function() { elements.justificativaModal.classList.add('hidden'); });
-            elements.cancelarResponsavelBtn.addEventListener('click', function() { elements.responsavelModal.classList.add('hidden'); });
+            elements.finalizarOrdemBtn.addEventListener('click', () => handleFinalizeMain(false));
+            elements.cancelarJustificativaBtn.addEventListener('click', () => elements.justificativaModal.classList.add('hidden'));
+            elements.cancelarResponsavelBtn.addEventListener('click', () => elements.responsavelModal.classList.add('hidden'));
             
-            elements.salvarProdutoBtn.addEventListener('click', async function() {
+            elements.salvarProdutoBtn.addEventListener('click', async () => {
                 const codigo = elements.codigoProdutoCadastroInput.value.trim();
-                if (!codigo) {
-                    return showAviso("O código do produto é obrigatório.");
-                }
+                if (!codigo) return showAviso("O código do produto é obrigatório.");
+                
                 const etapas = [];
                 let hasError = false;
-                elements.etapasContainer.querySelectorAll('.etapa').forEach(function(el) {
+                elements.etapasContainer.querySelectorAll('.etapa').forEach(el => {
                     const nomeEtapa = el.querySelector('.etapa-nome').value.trim();
                     if (!nomeEtapa) hasError = true;
                     const subetapas = [];
-                    el.querySelectorAll('.subetapa-nome').forEach(function(subEl) {
+                    el.querySelectorAll('.subetapa-nome').forEach(subEl => {
                         const nomeSub = subEl.value.trim();
                         if (!nomeSub) hasError = true;
                         subetapas.push({ nome: nomeSub });
                     });
                     etapas.push({ nome: nomeEtapa, subetapas: subetapas });
                 });
-                if (hasError) {
-                    return showAviso("Todos os nomes de etapas e sub-etapas são obrigatórios.");
-                }
+
+                if (hasError) return showAviso("Todos os nomes de etapas e sub-etapas são obrigatórios.");
+                
                 try {
                     const produtoData = { codigo, etapas };
                     const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
@@ -464,40 +504,28 @@
                     elements.etapasContainer.innerHTML = '';
                     elements.salvarProdutoBtn.textContent = 'Salvar Produto';
                     currentEditingProductId = null;
-                } catch(e) { 
-                    console.error(e); 
-                    showAviso("Erro ao salvar produto."); 
-                }
+                } catch(e) { console.error(e); showAviso("Erro ao salvar produto."); }
             });
 
-            elements.abrirOrdemBtn.addEventListener('click', async function() {
+            elements.abrirOrdemBtn.addEventListener('click', async () => {
                 const numero = elements.numeroOrdemInput.value.trim();
                 const produtoId = elements.produtoApontamentoSelect.value;
                 const quantidade = parseInt(elements.quantidadeApontamentoInput.value, 10);
-                if (!numero || !produtoId || isNaN(quantidade) || quantidade <= 0) {
-                    return showAviso("Preencha todos os campos.");
-                }
+                if (!numero || !produtoId || isNaN(quantidade) || quantidade <= 0) return showAviso("Preencha todos os campos.");
+                
                 try {
                     const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
                     const q = query(ordensRef, where("numero", "==", numero));
-                    if (!(await getDocs(q)).empty) {
-                        return showAviso(`A ordem #${numero} já existe.`);
-                    }
+                    if (!(await getDocs(q)).empty) return showAviso(`A ordem #${numero} já existe.`);
                     
                     const produtoDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/produtos`, produtoId));
-                    if (!produtoDoc.exists()) {
-                        return showAviso("Produto não encontrado.");
-                    }
+                    if (!produtoDoc.exists()) return showAviso("Produto não encontrado.");
                     
                     const pData = produtoDoc.data();
-                    const etapas = pData.etapas.map(function(e) {
-                        return {
-                            ...e, inicio: null, fim: null, responsavel: null, concluida: false, tempoLiquido: 0,
-                            subetapas: e.subetapas.map(function(s) {
-                                return {...s, inicio: null, fim: null, responsavel: null, emPausa: false, pausas: [], tempoTotalPausas: 0, tempoLiquido: 0 };
-                            })
-                        };
-                    });
+                    const etapas = pData.etapas.map(e => ({
+                        ...e, inicio: null, fim: null, responsavel: null, concluida: false, tempoLiquido: 0,
+                        subetapas: e.subetapas.map(s => ({...s, inicio: null, fim: null, responsavel: null, emPausa: false, pausas: [], tempoTotalPausas: 0, tempoLiquido: 0, produtividade: 0 }))
+                    }));
                     
                     await addDoc(ordensRef, { numero, produto: pData.codigo, produtoId, quantidade, dataInicio: null, dataFim: null, concluida: false, etapas });
                     
@@ -506,17 +534,12 @@
                     elements.produtoApontamentoSelect.value = '';
                     elements.quantidadeApontamentoInput.value = '';
                     switchTab('historicoTab');
-                } catch (e) { 
-                    console.error(e); 
-                    showAviso("Erro ao abrir ordem."); 
-                }
+                } catch (e) { console.error(e); showAviso("Erro ao abrir ordem."); }
             });
 
-            elements.salvarResponsavelBtn.addEventListener('click', async function() {
+            elements.salvarResponsavelBtn.addEventListener('click', async () => {
                 const responsavel = elements.responsavelInput.value.trim();
-                if (!responsavel || !currentStartContext) {
-                    return;
-                }
+                if (!responsavel || !currentStartContext) return;
                 
                 const { index, subIndex } = currentStartContext;
                 const now = Timestamp.now();
@@ -525,24 +548,17 @@
                 subetapa.responsavel = responsavel;
                 
                 const etapa = ordemProducaoAtual.etapas[index];
-                if (!etapa.inicio) { 
-                    etapa.inicio = now; 
-                    etapa.responsavel = responsavel; 
-                }
-                if (!ordemProducaoAtual.dataInicio) {
-                    ordemProducaoAtual.dataInicio = now;
-                }
+                if (!etapa.inicio) { etapa.inicio = now; etapa.responsavel = responsavel; }
+                if (!ordemProducaoAtual.dataInicio) ordemProducaoAtual.dataInicio = now;
 
                 elements.responsavelModal.classList.add('hidden');
                 await updateOrderInFirestore();
                 renderizarOrdem();
             });
 
-            elements.salvarJustificativaBtn.addEventListener('click', async function() {
+            elements.salvarJustificativaBtn.addEventListener('click', async () => {
                 const justificativa = elements.justificativaInput.value.trim();
-                if (!justificativa || !currentPauseContext) {
-                    return;
-                }
+                if (!justificativa || !currentPauseContext) return;
 
                 const { index, subIndex } = currentPauseContext;
                 const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
