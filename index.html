@@ -203,7 +203,9 @@
                     const isFinished = subetapa.fim !== null;
                     const isPaused = subetapa.emPausa;
                     const canStart = !isStarted && prevSubetapaConcluida && prevEtapaConcluida;
-                    subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused ? 'disabled' : ''}>Concluir</button></div>`;
+                    const canInteract = !ordemProducaoAtual.concluida;
+
+                    subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished || !canInteract ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || !canInteract ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused || !canInteract ? 'disabled' : ''}>Concluir</button></div>`;
                     subetapasContainer.appendChild(subetapaDiv);
                     prevSubetapaConcluida = isFinished;
                 });
@@ -297,7 +299,7 @@
             switchTab('historicoTab');
             elements.listasDeOrdensDiv.classList.add('hidden');
             elements.ordemDetalhesDiv.classList.remove('hidden');
-            elements.finalizarOrdemBtn.disabled = !checkAllEtapasConcluded(ordemProducaoAtual);
+            elements.finalizarOrdemBtn.disabled = ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual);
             renderizarOrdem();
         }
 
@@ -321,37 +323,28 @@
                 const snapshot = await getDocs(query(ordensRef, orderBy("numero", "desc")));
                 
                 if (snapshot.empty) {
-                    showAviso("Não há dados para exportar.");
-                    return;
+                    return showAviso("Não há dados para exportar.");
                 }
 
-                let csvContent = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Inicio,Fim,Tempo Liquido,Produtividade (pçs/h)\n";
+                let csvContent = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Inicio,Fim,Tempo Liquido,Produtividade (pcs/h)\n";
                 
                 snapshot.forEach(doc => {
                     const ordem = doc.data();
                     const status = ordem.concluida ? "Concluída" : "Em Andamento";
 
-                    if (ordem.etapas && ordem.etapas.length > 0) {
+                    if (ordem.etapas && Array.isArray(ordem.etapas)) {
                         ordem.etapas.forEach(etapa => {
-                            if (etapa.subetapas && etapa.subetapas.length > 0) {
+                            if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
                                 etapa.subetapas.forEach(sub => {
-                                    const inicio = sub.inicio ? sub.inicio.toDate().toLocaleString('pt-BR') : 'N/A';
-                                    const fim = sub.fim ? sub.fim.toDate().toLocaleString('pt-BR') : 'N/A';
-                                    const tempo = formatarTempo(sub.tempoLiquido);
-                                    const prod = sub.produtividade ? sub.produtividade.toFixed(2) : '0.00';
+                                    const inicio = (sub.inicio && typeof sub.inicio.toDate === 'function') ? sub.inicio.toDate().toLocaleString('pt-BR') : 'N/A';
+                                    const fim = (sub.fim && typeof sub.fim.toDate === 'function') ? sub.fim.toDate().toLocaleString('pt-BR') : 'N/A';
+                                    const tempo = formatarTempo(sub.tempoLiquido || 0);
+                                    const prod = (typeof sub.produtividade === 'number') ? sub.produtividade.toFixed(2) : '0.00';
                                     
                                     const row = [
-                                        `"${ordem.numero}"`,
-                                        `"${ordem.produto}"`,
-                                        ordem.quantidade,
-                                        `"${status}"`,
-                                        `"${etapa.nome}"`,
-                                        `"${sub.nome}"`,
-                                        `"${sub.responsavel || ''}"`,
-                                        `"${inicio}"`,
-                                        `"${fim}"`,
-                                        `"${tempo}"`,
-                                        `"${prod}"`
+                                        `"${ordem.numero}"`, `"${ordem.produto}"`, ordem.quantidade, `"${status}"`,
+                                        `"${etapa.nome}"`, `"${sub.nome}"`, `"${sub.responsavel || ''}"`,
+                                        `"${inicio}"`, `"${fim}"`, `"${tempo}"`, `"${prod}"`
                                     ].join(",");
                                     csvContent += row + "\n";
                                 });
@@ -370,6 +363,7 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 showAviso("Exportação concluída!");
+
             } catch (e) {
                 console.error("Erro ao exportar CSV:", e);
                 showAviso("Ocorreu um erro ao exportar os dados.");
@@ -406,14 +400,7 @@
                     const li = document.createElement('li');
                     li.className = 'p-4 bg-gray-100 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200';
                     li.addEventListener('click', () => carregarOrdemParaApontamento(doc.id, data));
-                    li.innerHTML = `
-                        <p class="font-semibold text-gray-800">Ordem #${data.numero}</p>
-                        <p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p>
-                        <p class="text-sm text-gray-600"><strong>Quantidade:</strong> ${data.quantidade}</p>
-                        <p class="text-sm text-gray-600"><strong>Início:</strong> ${data.dataInicio ? data.dataInicio.toDate().toLocaleString('pt-BR') : '--'}</p>
-                        <p class="text-sm text-gray-600"><strong>Fim:</strong> ${data.dataFim ? data.dataFim.toDate().toLocaleString('pt-BR') : '--'}</p>
-                        <p class="text-sm text-gray-600"><strong>Status:</strong> ${data.concluida ? '<span class="font-bold text-green-600">Concluída</span>' : '<span class="font-bold text-blue-600">Em Andamento</span>'}</p>
-                    `;
+                    li.innerHTML = `<p class="font-semibold text-gray-800">Ordem #${data.numero}</p><p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p><p class="text-sm text-gray-600"><strong>Quantidade:</strong> ${data.quantidade}</p><p class="text-sm text-gray-600"><strong>Início:</strong> ${data.dataInicio ? data.dataInicio.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Fim:</strong> ${data.dataFim ? data.dataFim.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Status:</strong> ${data.concluida ? '<span class="font-bold text-green-600">Concluída</span>' : '<span class="font-bold text-blue-600">Em Andamento</span>'}</p>`;
                     if (data.concluida) {
                         elements.ordensConcluidasUl.appendChild(li);
                     } else {
