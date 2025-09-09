@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apontamento de Produção Avançado</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Adição da biblioteca Chart.js para os dashboards -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
@@ -179,8 +181,12 @@
         }
         
         function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(function(tab) {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
             document.getElementById(tabId).classList.add('active');
             document.getElementById(`${tabId}Btn`).classList.add('active');
         }
@@ -190,8 +196,12 @@
             etapaDiv.className = 'etapa p-4 border rounded-lg bg-gray-50 space-y-2';
             etapaDiv.innerHTML = `<div><label class="block text-sm font-medium text-gray-700">Nome da Etapa</label><input type="text" class="etapa-nome mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Montagem" value="${nome}"></div><div class="subetapas-container pl-4 space-y-2"></div><div class="flex space-x-2"><button type="button" class="add-subetapa-btn flex-1 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Adicionar Sub-etapa</button><button type="button" class="remove-etapa-btn flex-1 bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover Etapa</button></div>`;
             elements.etapasContainer.appendChild(etapaDiv);
-            etapaDiv.querySelector('.add-subetapa-btn').addEventListener('click', () => createSubetapaField(etapaDiv.querySelector('.subetapas-container')));
-            etapaDiv.querySelector('.remove-etapa-btn').addEventListener('click', () => etapaDiv.remove());
+            etapaDiv.querySelector('.add-subetapa-btn').addEventListener('click', function() {
+                createSubetapaField(etapaDiv.querySelector('.subetapas-container'));
+            });
+            etapaDiv.querySelector('.remove-etapa-btn').addEventListener('click', function() {
+                etapaDiv.remove();
+            });
         }
 
         function createSubetapaField(container, nome = '') {
@@ -199,7 +209,9 @@
             subetapaDiv.className = 'subetapa flex items-center space-x-2';
             subetapaDiv.innerHTML = `<input type="text" class="subetapa-nome flex-1 block w-full rounded-md border-gray-300 shadow-sm p-2 text-sm" placeholder="Nome da Sub-etapa" value="${nome}"><button type="button" class="remove-subetapa-btn bg-red-400 hover:bg-red-500 text-white font-semibold py-1 px-2 rounded-md text-sm shadow-sm">Remover</button>`;
             container.appendChild(subetapaDiv);
-            subetapaDiv.querySelector('.remove-subetapa-btn').addEventListener('click', () => subetapaDiv.remove());
+            subetapaDiv.querySelector('.remove-subetapa-btn').addEventListener('click', function() {
+                subetapaDiv.remove();
+            });
         }
         
         function renderizarOrdem() {
@@ -207,14 +219,14 @@
             if (!ordemProducaoAtual || !ordemProducaoAtual.etapas) return;
             elements.ordemNumeroDisplay.textContent = ordemProducaoAtual.numero;
             let prevEtapaConcluida = true;
-            ordemProducaoAtual.etapas.forEach((etapa, index) => {
+            ordemProducaoAtual.etapas.forEach(function(etapa, index) {
                 const etapaDiv = document.createElement('div');
                 etapaDiv.className = `etapa-card p-4 border rounded-lg bg-gray-50 space-y-3 ${etapa.concluida ? 'etapa-concluida' : ''}`;
                 etapaDiv.dataset.index = index;
                 etapaDiv.innerHTML = `<div class="flex justify-between items-center"><h4 class="text-lg font-bold text-gray-800">${etapa.nome}</h4><div class="text-sm text-right"><p class="responsavel-etapa-display text-gray-600">Responsável: ${etapa.responsavel || '--'}</p><p class="text-gray-600">Tempo Líquido: <span class="font-semibold">${formatarTempo(etapa.tempoLiquido)}</span></p></div></div><div class="subetapas-apontamento-container pl-4 space-y-2 border-l-2 border-gray-200"></div>`;
                 const subetapasContainer = etapaDiv.querySelector('.subetapas-apontamento-container');
                 let prevSubetapaConcluida = true;
-                etapa.subetapas.forEach((subetapa, subIndex) => {
+                etapa.subetapas.forEach(function(subetapa, subIndex) {
                     const subetapaDiv = document.createElement('div');
                     subetapaDiv.className = `subetapa-card p-3 bg-white rounded-md shadow-sm border ${subetapa.fim ? 'etapa-concluida' : ''}`;
                     subetapaDiv.dataset.index = index; 
@@ -232,15 +244,15 @@
                 elements.etapasApontamentoDiv.appendChild(etapaDiv);
                 prevEtapaConcluida = etapa.concluida;
             });
-            elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(btn => btn.addEventListener('click', handleStart));
-            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').addEventListener('click', handlePause));
-            elements.etapasApontamentoDiv.querySelectorAll('.concluir-btn').forEach(btn => btn.addEventListener('click', handleConclude));
+            elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(function(btn) { btn.addEventListener('click', handleStart); });
+            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').forEach(function(btn) { btn.addEventListener('click', handlePause); });
+            elements.etapasApontamentoDiv.querySelectorAll('.concluir-btn').forEach(function(btn) { btn.addEventListener('click', handleConclude); });
         }
         
         async function updateOrderInFirestore() {
             if (!currentOrderDocId) return;
             const docRef = doc(db, `artifacts/${appId}/public/data/ordens`, currentOrderDocId);
-            await setDoc(docRef, ordemProducaoAtual).catch(e => { console.error(e); showAviso("Erro ao salvar o progresso da ordem."); });
+            await setDoc(docRef, ordemProducaoAtual).catch(function(e) { console.error(e); showAviso("Erro ao salvar o progresso da ordem."); });
         }
 
         function handleStart(event) {
@@ -277,7 +289,9 @@
             const { index, subIndex } = parent.dataset;
             const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
             const etapa = ordemProducaoAtual.etapas[index];
-            if (sub.emPausa) return showAviso("Conclua a pausa antes de finalizar.");
+            if (sub.emPausa) {
+                return showAviso("Conclua a pausa antes de finalizar.");
+            }
             const now = Timestamp.now();
             sub.fim = now;
             if (sub.inicio && typeof sub.inicio.toMillis === 'function') {
@@ -292,7 +306,7 @@
             if (checkAllSubetapasConcluded(etapa)) {
                 etapa.fim = now;
                 etapa.concluida = true;
-                etapa.tempoLiquido = etapa.subetapas.reduce((acc, s) => acc + (s.tempoLiquido || 0), 0);
+                etapa.tempoLiquido = etapa.subetapas.reduce(function(acc, s) { return acc + (s.tempoLiquido || 0); }, 0);
                 showAviso(`Etapa "${etapa.nome}" concluída!`);
                 if (checkAllEtapasConcluded(ordemProducaoAtual)) {
                     elements.finalizarOrdemBtn.disabled = false;
@@ -305,7 +319,9 @@
         }
         
         async function handleFinalizeMain(isAutomatic = false) {
-            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) return;
+            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) {
+                return;
+            }
             ordemProducaoAtual.dataFim = Timestamp.now();
             ordemProducaoAtual.concluida = true;
             await updateOrderInFirestore();
@@ -327,10 +343,12 @@
             currentEditingProductId = id;
             elements.codigoProdutoCadastroInput.value = data.codigo;
             elements.etapasContainer.innerHTML = '';
-            data.etapas.forEach(etapa => {
+            data.etapas.forEach(function(etapa) {
                 const etapaDiv = createEtapaField(etapa.nome);
                 const subContainer = etapaDiv.querySelector('.subetapas-container');
-                etapa.subetapas.forEach(sub => createSubetapaField(subContainer, sub.nome));
+                etapa.subetapas.forEach(function(sub) {
+                    createSubetapaField(subContainer, sub.nome);
+                });
             });
             elements.salvarProdutoBtn.textContent = 'Atualizar Produto';
             switchTab('cadastroTab');
@@ -348,14 +366,14 @@
 
                 let csvContent = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Inicio,Fim,Tempo Liquido,Produtividade (pcs/h)\n";
                 
-                snapshot.forEach(doc => {
+                snapshot.forEach(function(doc) {
                     const ordem = doc.data();
                     const status = ordem.concluida ? "Concluída" : "Em Andamento";
 
                     if (ordem.etapas && Array.isArray(ordem.etapas)) {
-                        ordem.etapas.forEach(etapa => {
+                        ordem.etapas.forEach(function(etapa) {
                             if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
-                                etapa.subetapas.forEach(sub => {
+                                etapa.subetapas.forEach(function(sub) {
                                     const inicio = (sub.inicio && typeof sub.inicio.toDate === 'function') ? sub.inicio.toDate().toLocaleString('pt-BR') : 'N/A';
                                     const fim = (sub.fim && typeof sub.fim.toDate === 'function') ? sub.fim.toDate().toLocaleString('pt-BR') : 'N/A';
                                     const tempo = formatarTempo(sub.tempoLiquido || 0);
@@ -394,13 +412,13 @@
             let productivityData = {};
             const subetapaSet = new Set();
 
-            allOrdersData.forEach(ordem => {
+            allOrdersData.forEach(function(ordem) {
                 if (!ordem.concluida || !ordem.etapas || !Array.isArray(ordem.etapas)) return;
                 
-                ordem.etapas.forEach(etapa => {
+                ordem.etapas.forEach(function(etapa) {
                     if (!etapa.subetapas || !Array.isArray(etapa.subetapas)) return;
 
-                    etapa.subetapas.forEach(sub => {
+                    etapa.subetapas.forEach(function(sub) {
                         if (sub.fim && sub.responsavel) {
                             const subetapaNome = sub.nome.trim();
                             const responsavel = sub.responsavel.trim();
@@ -424,7 +442,7 @@
             const filter = elements.subetapaFilter;
             const currentVal = filter.value;
             filter.innerHTML = '<option value="">Selecione uma sub-etapa...</option>';
-            [...subetapaSet].sort().forEach(subetapa => {
+            [...subetapaSet].sort().forEach(function(subetapa) {
                 const option = document.createElement('option');
                 option.value = subetapa;
                 option.textContent = subetapa;
@@ -448,7 +466,7 @@
             }
 
             if (!subetapaNome || !productivityData[subetapaNome]) {
-                if (ctx) { // Clear canvas if no data
+                if (ctx) { 
                     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
                 }
                 return;
@@ -456,7 +474,9 @@
 
             const data = productivityData[subetapaNome];
             const labels = Object.keys(data).sort();
-            const averages = labels.map(label => data[label].totalPcsHora / data[label].count);
+            const averages = labels.map(function(label) {
+                return data[label].totalPcsHora / data[label].count;
+            });
 
             productivityChart = new Chart(ctx, {
                 type: 'bar',
@@ -487,15 +507,17 @@
             if (!userId) return;
             
             const produtosRef = collection(db, `artifacts/${appId}/public/data/produtos`);
-            onSnapshot(query(produtosRef, orderBy("codigo")), (snapshot) => {
+            onSnapshot(query(produtosRef, orderBy("codigo")), function(snapshot) {
                 elements.listaProdutosCadastradosUl.innerHTML = '';
                 elements.produtoApontamentoSelect.innerHTML = '<option value="">Selecione um produto...</option>';
-                snapshot.forEach(doc => {
+                snapshot.forEach(function(doc) {
                     const data = doc.data();
                     const li = document.createElement('li');
                     li.className = 'product-item';
                     li.textContent = data.codigo;
-                    li.addEventListener('click', () => fillFormForEditing(doc.id, data));
+                    li.addEventListener('click', function() {
+                        fillFormForEditing(doc.id, data);
+                    });
                     elements.listaProdutosCadastradosUl.appendChild(li);
                     const option = document.createElement('option');
                     option.value = doc.id;
@@ -505,16 +527,18 @@
             });
             
             const ordensRef = collection(db, `artifacts/${appId}/public/data/ordens`);
-            onSnapshot(query(ordensRef, orderBy("numero", "desc")), (snapshot) => {
+            onSnapshot(query(ordensRef, orderBy("numero", "desc")), function(snapshot) {
                 elements.ordensEmAndamentoUl.innerHTML = '';
                 elements.ordensConcluidasUl.innerHTML = '';
                 const orders = [];
-                snapshot.forEach(doc => {
+                snapshot.forEach(function(doc) {
                     const data = doc.data();
-                    orders.push(data); // Armazena para o dashboard
+                    orders.push(data); 
                     const li = document.createElement('li');
                     li.className = 'p-4 bg-gray-100 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200';
-                    li.addEventListener('click', () => carregarOrdemParaApontamento(doc.id, data));
+                    li.addEventListener('click', function() {
+                        carregarOrdemParaApontamento(doc.id, data);
+                    });
                     li.innerHTML = `<p class="font-semibold text-gray-800">Ordem #${data.numero}</p><p class="text-sm text-gray-600"><strong>Produto:</strong> ${data.produto}</p><p class="text-sm text-gray-600"><strong>Quantidade:</strong> ${data.quantidade}</p><p class="text-sm text-gray-600"><strong>Início:</strong> ${data.dataInicio ? data.dataInicio.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Fim:</strong> ${data.dataFim ? data.dataFim.toDate().toLocaleString('pt-BR') : '--'}</p><p class="text-sm text-gray-600"><strong>Status:</strong> ${data.concluida ? '<span class="font-bold text-green-600">Concluída</span>' : '<span class="font-bold text-blue-600">Em Andamento</span>'}</p>`;
                     if (data.concluida) {
                         elements.ordensConcluidasUl.appendChild(li);
@@ -533,14 +557,14 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
-                onAuthStateChanged(auth, (user) => {
+                onAuthStateChanged(auth, function(user) {
                     if (user) {
                         userId = user.uid;
                         elements.userIdDisplay.textContent = userId;
                         setupFirebaseListeners();
                     } else {
                         if (initialAuthToken) {
-                            signInWithCustomToken(auth, initialAuthToken).catch(err => {
+                            signInWithCustomToken(auth, initialAuthToken).catch(function(err) {
                                 console.error("Falha no login com token, tentando anônimo:", err);
                                 signInAnonymously(auth);
                             });
@@ -556,37 +580,37 @@
         }
         
         function bindEventListeners() {
-            elements.cadastroTabBtn.addEventListener('click', () => switchTab('cadastroTab'));
-            elements.apontamentoTabBtn.addEventListener('click', () => switchTab('apontamentoTab'));
-            elements.historicoTabBtn.addEventListener('click', () => switchTab('historicoTab'));
-            elements.dashboardTabBtn.addEventListener('click', () => switchTab('dashboardTab'));
+            elements.cadastroTabBtn.addEventListener('click', function() { switchTab('cadastroTab'); });
+            elements.apontamentoTabBtn.addEventListener('click', function() { switchTab('apontamentoTab'); });
+            elements.historicoTabBtn.addEventListener('click', function() { switchTab('historicoTab'); });
+            elements.dashboardTabBtn.addEventListener('click', function() { switchTab('dashboardTab'); });
             elements.addEtapaBtn.addEventListener('click', createEtapaField);
-            elements.fecharAvisoBtn.addEventListener('click', () => elements.avisoModal.classList.add('hidden'));
+            elements.fecharAvisoBtn.addEventListener('click', function() { elements.avisoModal.classList.add('hidden'); });
             elements.exportarBtn.addEventListener('click', exportarParaCSV);
-            elements.subetapaFilter.addEventListener('change', (e) => processAndDisplayDashboardData());
+            elements.subetapaFilter.addEventListener('change', function() { processAndDisplayDashboardData(); });
             
-            elements.voltarBtn.addEventListener('click', () => {
+            elements.voltarBtn.addEventListener('click', function() {
                 elements.ordemDetalhesDiv.classList.add('hidden');
                 elements.listasDeOrdensDiv.classList.remove('hidden');
                 currentOrderDocId = null;
                 ordemProducaoAtual = {};
             });
             
-            elements.finalizarOrdemBtn.addEventListener('click', () => handleFinalizeMain(false));
-            elements.cancelarJustificativaBtn.addEventListener('click', () => elements.justificativaModal.classList.add('hidden'));
-            elements.cancelarResponsavelBtn.addEventListener('click', () => elements.responsavelModal.classList.add('hidden'));
+            elements.finalizarOrdemBtn.addEventListener('click', function() { handleFinalizeMain(false); });
+            elements.cancelarJustificativaBtn.addEventListener('click', function() { elements.justificativaModal.classList.add('hidden'); });
+            elements.cancelarResponsavelBtn.addEventListener('click', function() { elements.responsavelModal.classList.add('hidden'); });
             
-            elements.salvarProdutoBtn.addEventListener('click', async () => {
+            elements.salvarProdutoBtn.addEventListener('click', async function() {
                 const codigo = elements.codigoProdutoCadastroInput.value.trim();
                 if (!codigo) return showAviso("O código do produto é obrigatório.");
                 
                 const etapas = [];
                 let hasError = false;
-                elements.etapasContainer.querySelectorAll('.etapa').forEach(el => {
+                elements.etapasContainer.querySelectorAll('.etapa').forEach(function(el) {
                     const nomeEtapa = el.querySelector('.etapa-nome').value.trim();
                     if (!nomeEtapa) hasError = true;
                     const subetapas = [];
-                    el.querySelectorAll('.subetapa-nome').forEach(subEl => {
+                    el.querySelectorAll('.subetapa-nome').forEach(function(subEl) {
                         const nomeSub = subEl.value.trim();
                         if (!nomeSub) hasError = true;
                         subetapas.push({ nome: nomeSub });
@@ -613,7 +637,7 @@
                 } catch(e) { console.error(e); showAviso("Erro ao salvar produto."); }
             });
 
-            elements.abrirOrdemBtn.addEventListener('click', async () => {
+            elements.abrirOrdemBtn.addEventListener('click', async function() {
                 const numero = elements.numeroOrdemInput.value.trim();
                 const produtoId = elements.produtoApontamentoSelect.value;
                 const quantidade = parseInt(elements.quantidadeApontamentoInput.value, 10);
@@ -628,10 +652,14 @@
                     if (!produtoDoc.exists()) return showAviso("Produto não encontrado.");
                     
                     const pData = produtoDoc.data();
-                    const etapas = pData.etapas.map(e => ({
-                        ...e, inicio: null, fim: null, responsavel: null, concluida: false, tempoLiquido: 0,
-                        subetapas: e.subetapas.map(s => ({...s, inicio: null, fim: null, responsavel: null, emPausa: false, pausas: [], tempoTotalPausas: 0, tempoLiquido: 0, produtividade: 0 }))
-                    }));
+                    const etapas = pData.etapas.map(function(e) {
+                        return {
+                            ...e, inicio: null, fim: null, responsavel: null, concluida: false, tempoLiquido: 0,
+                            subetapas: e.subetapas.map(function(s) {
+                                return {...s, inicio: null, fim: null, responsavel: null, emPausa: false, pausas: [], tempoTotalPausas: 0, tempoLiquido: 0, produtividade: 0 };
+                            })
+                        };
+                    });
                     
                     await addDoc(ordensRef, { numero, produto: pData.codigo, produtoId, quantidade, dataInicio: null, dataFim: null, concluida: false, etapas });
                     
@@ -643,7 +671,7 @@
                 } catch (e) { console.error(e); showAviso("Erro ao abrir ordem."); }
             });
 
-            elements.salvarResponsavelBtn.addEventListener('click', async () => {
+            elements.salvarResponsavelBtn.addEventListener('click', async function() {
                 const responsavel = elements.responsavelInput.value.trim();
                 if (!responsavel || !currentStartContext) return;
                 
@@ -662,7 +690,7 @@
                 renderizarOrdem();
             });
 
-            elements.salvarJustificativaBtn.addEventListener('click', async () => {
+            elements.salvarJustificativaBtn.addEventListener('click', async function() {
                 const justificativa = elements.justificativaInput.value.trim();
                 if (!justificativa || !currentPauseContext) return;
 
