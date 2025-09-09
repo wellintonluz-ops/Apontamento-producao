@@ -364,7 +364,29 @@
                     return showAviso("Não há dados para exportar.");
                 }
 
-                let csvContent = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Inicio,Fim,Tempo Liquido,Produtividade (pcs/h)\n";
+                let maxPausas = 0;
+                snapshot.forEach(doc => {
+                    const ordem = doc.data();
+                    if (ordem.etapas && Array.isArray(ordem.etapas)) {
+                        ordem.etapas.forEach(etapa => {
+                            if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
+                                etapa.subetapas.forEach(sub => {
+                                    if (sub.pausas && sub.pausas.length > maxPausas) {
+                                        maxPausas = sub.pausas.length;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+
+                let csvHeader = "Ordem,Produto,Qtd Total,Status,Etapa,Subetapa,Responsavel,Data Inicio,Hora Inicio,Data Fim,Hora Fim,Tempo Liquido,Tempo Total Pausa,Produtividade (pcs/h)";
+                for (let i = 1; i <= maxPausas; i++) {
+                    csvHeader += `,Motivo Pausa ${i},Duracao Pausa ${i}`;
+                }
+                csvHeader += "\n";
+
+                let csvContent = csvHeader;
                 
                 snapshot.forEach(function(doc) {
                     const ordem = doc.data();
@@ -374,15 +396,37 @@
                         ordem.etapas.forEach(function(etapa) {
                             if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
                                 etapa.subetapas.forEach(function(sub) {
-                                    const inicio = (sub.inicio && typeof sub.inicio.toDate === 'function') ? sub.inicio.toDate().toLocaleString('pt-BR') : 'N/A';
-                                    const fim = (sub.fim && typeof sub.fim.toDate === 'function') ? sub.fim.toDate().toLocaleString('pt-BR') : 'N/A';
+                                    const dataInicio = (sub.inicio && typeof sub.inicio.toDate === 'function') ? sub.inicio.toDate() : null;
+                                    const dataFim = (sub.fim && typeof sub.fim.toDate === 'function') ? sub.fim.toDate() : null;
+
+                                    const dataInicioStr = dataInicio ? dataInicio.toLocaleDateString('pt-BR') : 'N/A';
+                                    const horaInicioStr = dataInicio ? dataInicio.toLocaleTimeString('pt-BR') : 'N/A';
+                                    const dataFimStr = dataFim ? dataFim.toLocaleDateString('pt-BR') : 'N/A';
+                                    const horaFimStr = dataFim ? dataFim.toLocaleTimeString('pt-BR') : 'N/A';
+                                    
                                     const tempo = formatarTempo(sub.tempoLiquido || 0);
+                                    const tempoPausaTotal = formatarTempo(sub.tempoTotalPausas || 0);
                                     const prod = (typeof sub.produtividade === 'number') ? sub.produtividade.toFixed(2) : '0.00';
+                                    
+                                    let pausasCsv = [];
+                                    if (sub.pausas && Array.isArray(sub.pausas)) {
+                                        sub.pausas.forEach(function(p) {
+                                            const duracao = (p.fim && p.inicio) ? formatarTempo(p.fim - p.inicio) : 'N/A';
+                                            pausasCsv.push(`"${p.justificativa.replace(/"/g, '""')}"`);
+                                            pausasCsv.push(`"${duracao}"`);
+                                        });
+                                    }
+                                    
+                                    while (pausasCsv.length < maxPausas * 2) {
+                                        pausasCsv.push('""', '""');
+                                    }
                                     
                                     const row = [
                                         `"${ordem.numero}"`, `"${ordem.produto}"`, ordem.quantidade, `"${status}"`,
                                         `"${etapa.nome}"`, `"${sub.nome}"`, `"${sub.responsavel || ''}"`,
-                                        `"${inicio}"`, `"${fim}"`, `"${tempo}"`, `"${prod}"`
+                                        `"${dataInicioStr}"`, `"${horaInicioStr}"`, `"${dataFimStr}"`, `"${horaFimStr}"`,
+                                        `"${tempo}"`, `"${tempoPausaTotal}"`, `"${prod}"`,
+                                        ...pausasCsv
                                     ].join(",");
                                     csvContent += row + "\n";
                                 });
@@ -455,6 +499,8 @@
            
             if (filter.value) {
                 updateDashboardChart(filter.value, productivityData);
+            } else {
+                updateDashboardChart(null, null); // Limpa o gráfico se nada estiver selecionado
             }
         }
 
@@ -705,8 +751,12 @@
             });
         }
         
-        bindEventListeners();
-        initializeFirebase();
+        function main() {
+            bindEventListeners();
+            initializeFirebase();
+        }
+
+        main();
     </script>
 </body>
 </html>
