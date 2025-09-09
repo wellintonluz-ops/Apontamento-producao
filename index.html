@@ -28,6 +28,7 @@
             <div id="cadastroTabBtn" class="tab-button active">Cadastro de Produtos</div>
             <div id="apontamentoTabBtn" class="tab-button">Apontamento de Ordem</div>
             <div id="historicoTabBtn" class="tab-button">Histórico de Ordens</div>
+            <div id="dashboardTabBtn" class="tab-button">Dashboard</div>
         </div>
         
         <div id="cadastroTab" class="tab-content active">
@@ -72,6 +73,21 @@
                 <div><h3 class="text-xl font-semibold text-gray-700">Ordens Concluídas</h3><ul id="ordensConcluidasUl" class="list-none space-y-2"></ul></div>
             </div>
         </div>
+
+        <div id="dashboardTab" class="tab-content">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800 text-center">Dashboard de Produtividade</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="subetapaFilter" class="block text-sm font-medium text-gray-700">Analisar Produtividade por Sub-etapa</label>
+                    <select id="subetapaFilter" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                        <option value="">Selecione uma sub-etapa...</option>
+                    </select>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg border">
+                     <canvas id="produtividadeChart"></canvas>
+                </div>
+            </div>
+        </div>
         
         <div id="justificativaModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200"><h3 class="text-lg font-bold mb-4">Justificativa da Pausa</h3><textarea id="justificativaInput" rows="4" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Motivo da pausa"></textarea><div class="mt-4 flex justify-end space-x-2"><button id="salvarJustificativaBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button><button id="cancelarJustificativaBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button></div></div></div>
         <div id="responsavelModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200"><h3 class="text-lg font-bold mb-4">Responsável pela Etapa</h3><input type="text" id="responsavelInput" class="block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Nome do operador"><div class="mt-4 flex justify-end space-x-2"><button id="salvarResponsavelBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg">Salvar</button><button id="cancelarResponsavelBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button></div></div></div>
@@ -88,6 +104,7 @@
             cadastroTabBtn: document.getElementById('cadastroTabBtn'),
             apontamentoTabBtn: document.getElementById('apontamentoTabBtn'),
             historicoTabBtn: document.getElementById('historicoTabBtn'),
+            dashboardTabBtn: document.getElementById('dashboardTabBtn'),
             codigoProdutoCadastroInput: document.getElementById('codigoProdutoCadastro'),
             etapasContainer: document.getElementById('etapasContainer'),
             addEtapaBtn: document.getElementById('addEtapaBtn'),
@@ -117,6 +134,7 @@
             avisoText: document.getElementById('avisoText'),
             fecharAvisoBtn: document.getElementById('fecharAvisoBtn'),
             exportarBtn: document.getElementById('exportarBtn'),
+            subetapaFilter: document.getElementById('subetapaFilter'),
         };
 
         let db, auth, userId;
@@ -125,6 +143,8 @@
         let currentStartContext = null;
         let currentEditingProductId = null;
         let currentOrderDocId = null;
+        let allOrdersData = [];
+        let productivityChart = null;
 
         const firebaseConfig = {
             apiKey: "AIzaSyBDb1E_wHtmISvNG31RhlmP979890X7nxY",
@@ -213,7 +233,7 @@
                 prevEtapaConcluida = etapa.concluida;
             });
             elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(btn => btn.addEventListener('click', handleStart));
-            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').forEach(btn => btn.addEventListener('click', handlePause));
+            elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').addEventListener('click', handlePause));
             elements.etapasApontamentoDiv.querySelectorAll('.concluir-btn').forEach(btn => btn.addEventListener('click', handleConclude));
         }
         
@@ -369,6 +389,99 @@
                 showAviso("Ocorreu um erro ao exportar os dados.");
             }
         }
+        
+        function processAndDisplayDashboardData() {
+            let productivityData = {};
+            const subetapaSet = new Set();
+
+            allOrdersData.forEach(ordem => {
+                if (!ordem.concluida || !ordem.etapas || !Array.isArray(ordem.etapas)) return;
+                
+                ordem.etapas.forEach(etapa => {
+                    if (!etapa.subetapas || !Array.isArray(etapa.subetapas)) return;
+
+                    etapa.subetapas.forEach(sub => {
+                        if (sub.fim && sub.responsavel) {
+                            const subetapaNome = sub.nome.trim();
+                            const responsavel = sub.responsavel.trim();
+                            
+                            subetapaSet.add(subetapaNome);
+
+                            if (!productivityData[subetapaNome]) {
+                                productivityData[subetapaNome] = {};
+                            }
+                            if (!productivityData[subetapaNome][responsavel]) {
+                                productivityData[subetapaNome][responsavel] = { totalPcsHora: 0, count: 0 };
+                            }
+
+                            productivityData[subetapaNome][responsavel].totalPcsHora += sub.produtividade || 0;
+                            productivityData[subetapaNome][responsavel].count++;
+                        }
+                    });
+                });
+            });
+
+            const filter = elements.subetapaFilter;
+            const currentVal = filter.value;
+            filter.innerHTML = '<option value="">Selecione uma sub-etapa...</option>';
+            [...subetapaSet].sort().forEach(subetapa => {
+                const option = document.createElement('option');
+                option.value = subetapa;
+                option.textContent = subetapa;
+                filter.appendChild(option);
+            });
+            
+            if (currentVal && subetapaSet.has(currentVal)) {
+                 filter.value = currentVal;
+            }
+           
+            if (filter.value) {
+                updateDashboardChart(filter.value, productivityData);
+            }
+        }
+
+        function updateDashboardChart(subetapaNome, productivityData) {
+            const ctx = document.getElementById('produtividadeChart').getContext('2d');
+            
+            if (productivityChart) {
+                productivityChart.destroy();
+            }
+
+            if (!subetapaNome || !productivityData[subetapaNome]) {
+                if (ctx) { // Clear canvas if no data
+                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                }
+                return;
+            }
+
+            const data = productivityData[subetapaNome];
+            const labels = Object.keys(data).sort();
+            const averages = labels.map(label => data[label].totalPcsHora / data[label].count);
+
+            productivityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Produtividade Média (pçs/h) para "${subetapaNome}"`,
+                        data: averages,
+                        backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Peças por Hora' }
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
 
         function setupFirebaseListeners() {
             if (!userId) return;
@@ -395,8 +508,10 @@
             onSnapshot(query(ordensRef, orderBy("numero", "desc")), (snapshot) => {
                 elements.ordensEmAndamentoUl.innerHTML = '';
                 elements.ordensConcluidasUl.innerHTML = '';
+                const orders = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
+                    orders.push(data); // Armazena para o dashboard
                     const li = document.createElement('li');
                     li.className = 'p-4 bg-gray-100 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200';
                     li.addEventListener('click', () => carregarOrdemParaApontamento(doc.id, data));
@@ -407,6 +522,8 @@
                         elements.ordensEmAndamentoUl.appendChild(li);
                     }
                 });
+                allOrdersData = orders;
+                processAndDisplayDashboardData();
             });
         }
         
@@ -442,9 +559,11 @@
             elements.cadastroTabBtn.addEventListener('click', () => switchTab('cadastroTab'));
             elements.apontamentoTabBtn.addEventListener('click', () => switchTab('apontamentoTab'));
             elements.historicoTabBtn.addEventListener('click', () => switchTab('historicoTab'));
+            elements.dashboardTabBtn.addEventListener('click', () => switchTab('dashboardTab'));
             elements.addEtapaBtn.addEventListener('click', createEtapaField);
             elements.fecharAvisoBtn.addEventListener('click', () => elements.avisoModal.classList.add('hidden'));
             elements.exportarBtn.addEventListener('click', exportarParaCSV);
+            elements.subetapaFilter.addEventListener('change', (e) => processAndDisplayDashboardData());
             
             elements.voltarBtn.addEventListener('click', () => {
                 elements.ordemDetalhesDiv.classList.add('hidden');
@@ -558,7 +677,6 @@
             });
         }
         
-        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
         bindEventListeners();
         initializeFirebase();
     </script>
