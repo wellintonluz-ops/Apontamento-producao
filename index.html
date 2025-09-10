@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Apontamento de Produção Avançado</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Adição da biblioteca Chart.js para os dashboards -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
@@ -149,13 +148,8 @@
         let productivityChart = null;
 
         // --- CORREÇÃO DE CONEXÃO ---
-        // Utiliza a configuração fornecida pelo ambiente para garantir a correspondência com o token de autenticação.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : {
-            apiKey: "MANUAL_API_KEY", // Coloque a sua chave aqui apenas para teste local
-            authDomain: "MANUAL_PROJECT_ID.firebaseapp.com",
-            projectId: "MANUAL_PROJECT_ID",
-        };
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         function showAviso(message) {
