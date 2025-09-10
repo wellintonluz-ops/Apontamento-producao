@@ -147,9 +147,15 @@
         let allOrdersData = [];
         let productivityChart = null;
 
-        // --- CORREÇÃO DE CONEXÃO ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDb1E_wHtmISvNG31RhlmP979890X7nxY",
+            authDomain: "apontamentoproducao-f141e.firebaseapp.com",
+            projectId: "apontamentoproducao-f141e",
+            storageBucket: "apontamentoproducao-f141e.appspot.com",
+            messagingSenderId: "516590802933",
+            appId: "1:516590802933:web:756d1e76d981e51604b2bc"
+        };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         function showAviso(message) {
@@ -227,7 +233,9 @@
                     const isStarted = subetapa.inicio !== null;
                     const isFinished = subetapa.fim !== null;
                     const isPaused = subetapa.emPausa;
-                    const canStart = !isStarted;
+                    // --- ALTERAÇÃO SOLICITADA ---
+                    const canStart = !isStarted; 
+                    // --- FIM DA ALTERAÇÃO ---
                     const canInteract = !ordemProducaoAtual.concluida;
 
                     subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished || !canInteract ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || !canInteract ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused || !canInteract ? 'disabled' : ''}>Concluir</button></div>`;
