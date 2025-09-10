@@ -12,7 +12,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .tab-button { @apply flex-1 py-2 px-4 text-center cursor-pointer font-semibold transition-colors duration-200 rounded-t-lg; }
+        .tab-button { @apply flex-1 py-2 px-4 text-center cursor-pointer font-semibold transition-colors duration-200; }
         .product-item { @apply p-2 bg-gray-100 rounded border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors; }
         .etapa-concluida { background-color: #d1fae5 !important; border-color: #6ee7b7; }
     </style>
@@ -386,13 +386,17 @@
             currentEditingProductId = id;
             elements.codigoProdutoCadastroInput.value = data.codigo;
             elements.etapasContainer.innerHTML = '';
-            data.etapas.forEach(function(etapa) {
-                const etapaDiv = createEtapaField(etapa.nome);
-                const subContainer = etapaDiv.querySelector('.subetapas-container');
-                etapa.subetapas.forEach(function(sub) {
-                    createSubetapaField(subContainer, sub.nome);
+            if (data.etapas && Array.isArray(data.etapas)) {
+                data.etapas.forEach(function(etapa) {
+                    const etapaDiv = createEtapaField(etapa.nome);
+                    const subContainer = etapaDiv.querySelector('.subetapas-container');
+                    if (etapa.subetapas && Array.isArray(etapa.subetapas)) {
+                        etapa.subetapas.forEach(function(sub) {
+                            createSubetapaField(subContainer, sub.nome);
+                        });
+                    }
                 });
-            });
+            }
             elements.salvarProdutoBtn.textContent = 'Atualizar Produto';
             switchTab('cadastroTab');
         }
