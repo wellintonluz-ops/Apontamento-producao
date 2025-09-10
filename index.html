@@ -148,15 +148,14 @@
         let allOrdersData = [];
         let productivityChart = null;
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBDb1E_wHtmISvNG31RhlmP979890X7nxY",
-            authDomain: "apontamentoproducao-f141e.firebaseapp.com",
-            projectId: "apontamentoproducao-f141e",
-            storageBucket: "apontamentoproducao-f141e.appspot.com",
-            messagingSenderId: "516590802933",
-            appId: "1:516590802933:web:756d1e76d981e51604b2bc"
-        };
+        // --- CORREÇÃO DE CONEXÃO ---
+        // Utiliza a configuração fornecida pelo ambiente para garantir a correspondência com o token de autenticação.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : {
+            apiKey: "MANUAL_API_KEY", // Coloque a sua chave aqui apenas para teste local
+            authDomain: "MANUAL_PROJECT_ID.firebaseapp.com",
+            projectId: "MANUAL_PROJECT_ID",
+        };
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         function showAviso(message) {
@@ -218,14 +217,14 @@
             elements.etapasApontamentoDiv.innerHTML = '';
             if (!ordemProducaoAtual || !ordemProducaoAtual.etapas) return;
             elements.ordemNumeroDisplay.textContent = ordemProducaoAtual.numero;
-            let prevEtapaConcluida = true;
+            
             ordemProducaoAtual.etapas.forEach(function(etapa, index) {
                 const etapaDiv = document.createElement('div');
                 etapaDiv.className = `etapa-card p-4 border rounded-lg bg-gray-50 space-y-3 ${etapa.concluida ? 'etapa-concluida' : ''}`;
                 etapaDiv.dataset.index = index;
                 etapaDiv.innerHTML = `<div class="flex justify-between items-center"><h4 class="text-lg font-bold text-gray-800">${etapa.nome}</h4><div class="text-sm text-right"><p class="responsavel-etapa-display text-gray-600">Responsável: ${etapa.responsavel || '--'}</p><p class="text-gray-600">Tempo Líquido: <span class="font-semibold">${formatarTempo(etapa.tempoLiquido)}</span></p></div></div><div class="subetapas-apontamento-container pl-4 space-y-2 border-l-2 border-gray-200"></div>`;
                 const subetapasContainer = etapaDiv.querySelector('.subetapas-apontamento-container');
-                let prevSubetapaConcluida = true;
+                
                 etapa.subetapas.forEach(function(subetapa, subIndex) {
                     const subetapaDiv = document.createElement('div');
                     subetapaDiv.className = `subetapa-card p-3 bg-white rounded-md shadow-sm border ${subetapa.fim ? 'etapa-concluida' : ''}`;
@@ -234,15 +233,13 @@
                     const isStarted = subetapa.inicio !== null;
                     const isFinished = subetapa.fim !== null;
                     const isPaused = subetapa.emPausa;
-                    const canStart = !isStarted && prevSubetapaConcluida && prevEtapaConcluida;
+                    const canStart = !isStarted;
                     const canInteract = !ordemProducaoAtual.concluida;
 
                     subetapaDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><p class="font-semibold">${subetapa.nome}</p><p class="responsavel-subetapa-display text-sm text-gray-500">Responsável: ${subetapa.responsavel || '--'}</p></div><div class="text-xs text-gray-500 mb-3 grid grid-cols-2 gap-x-2"><p>Tempo Líquido: <span class="font-mono">${formatarTempo(subetapa.tempoLiquido)}</span></p><p>Produtividade: <span class="font-mono">${subetapa.produtividade ? subetapa.produtividade.toFixed(2) : '--'} pçs/h</span></p></div><div class="flex space-x-2"><button class="iniciar-btn flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!canStart || isFinished || !canInteract ? 'disabled' : ''}>Iniciar</button><button class="pausar-btn flex-1 ${isPaused ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || !canInteract ? 'disabled' : ''}>${isPaused ? 'Continuar' : 'Pausar'}</button><button class="concluir-btn flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-2 rounded-md text-sm disabled:opacity-50" ${!isStarted || isFinished || isPaused || !canInteract ? 'disabled' : ''}>Concluir</button></div>`;
                     subetapasContainer.appendChild(subetapaDiv);
-                    prevSubetapaConcluida = isFinished;
                 });
                 elements.etapasApontamentoDiv.appendChild(etapaDiv);
-                prevEtapaConcluida = etapa.concluida;
             });
             elements.etapasApontamentoDiv.querySelectorAll('.iniciar-btn').forEach(function(btn) { btn.addEventListener('click', handleStart); });
             elements.etapasApontamentoDiv.querySelectorAll('.pausar-btn').forEach(function(btn) { btn.addEventListener('click', handlePause); });
@@ -289,9 +286,7 @@
             const { index, subIndex } = parent.dataset;
             const sub = ordemProducaoAtual.etapas[index].subetapas[subIndex];
             const etapa = ordemProducaoAtual.etapas[index];
-            if (sub.emPausa) {
-                return showAviso("Conclua a pausa antes de finalizar.");
-            }
+            if (sub.emPausa) return showAviso("Conclua a pausa antes de finalizar.");
             const now = Timestamp.now();
             sub.fim = now;
             if (sub.inicio && typeof sub.inicio.toMillis === 'function') {
@@ -319,9 +314,7 @@
         }
         
         async function handleFinalizeMain(isAutomatic = false) {
-            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) {
-                return;
-            }
+            if (ordemProducaoAtual.concluida || !checkAllEtapasConcluded(ordemProducaoAtual)) return;
             ordemProducaoAtual.dataFim = Timestamp.now();
             ordemProducaoAtual.concluida = true;
             await updateOrderInFirestore();
@@ -500,7 +493,7 @@
             if (filter.value) {
                 updateDashboardChart(filter.value, productivityData);
             } else {
-                updateDashboardChart(null, null); // Limpa o gráfico se nada estiver selecionado
+                updateDashboardChart(null, null); 
             }
         }
 
